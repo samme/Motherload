@@ -161,6 +161,7 @@ Motherload.Game.prototype = {
       // Ensure hero is on ground (could have used body.touching)
       //if (this.hero.position.y - 32 == ore.position.y) {
       // BUG this returns true if you're holding left / right down in the air as it catches on the block?
+      // Maybe check if there's a block underneath and if not, don't allow?
       if (this.hero.body.touching.down) {
         // Only dig through block left or right of hero
         if (ore.position.x != hero_tile_position * 64) {
