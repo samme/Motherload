@@ -68,32 +68,25 @@ Motherload.Game.prototype = {
       this.hero.body.velocity.x = 0;
       this.hero.body.velocity.y = 0;
 
-      //if (!digging_horizontal) {
-        if (this.cursors.up.isDown)
-        {
-            this.hero.body.velocity.y = -350;
-        }
-        else if (this.cursors.down.isDown)
-        {
-            this.hero.body.velocity.y = 350;
-        }
-      //}
+      if (this.cursors.up.isDown)
+      {
+          this.hero.body.velocity.y = -350;
+      }
+      else if (this.cursors.down.isDown)
+      {
+          this.hero.body.velocity.y = 350;
+      }
 
-      //if (!digging_vertical) {
-        if (this.cursors.left.isDown)
-        {
-            this.hero.body.velocity.x = -350;
-        }
-        else if (this.cursors.right.isDown)
-        {
-            this.hero.body.velocity.x = 350;
-        }
-      //}
+      if (this.cursors.left.isDown)
+      {
+          this.hero.body.velocity.x = -350;
+      }
+      else if (this.cursors.right.isDown)
+      {
+          this.hero.body.velocity.x = 350;
+      }
 
     }
-    // else {
-    //   this.hero.body.velocity.y += 40;
-    // }
   },
   render: function() {
 
@@ -102,7 +95,6 @@ Motherload.Game.prototype = {
     this.game.debug.text(this.game.time.fps, 400, 20, "#fff");
   },
   dig_prep: function(hero, ore) {
-    //console.log(hero.body.touching);
     if (game.cursors.down.isDown && hero.body.touching.down && !digging) {
       digging = true;
       digging_vertical = true;
@@ -121,80 +113,89 @@ Motherload.Game.prototype = {
   },
   dig: function(ore, direction) {
     // set to ground tile number (left is 0, next is 1 etc)
-    var hero_tile_position = Math.floor(this.hero.position.x / 64);
+    var hero_tile_position = Math.round(this.hero.position.x / 64);
       
     if (direction == "down") {
       // Stop digging side to side
       if (this.hero.position.y < ore.position.y) {
         // Only dig through block directly underneath (stops diagonal bug)
-        if (ore.position.x == hero_tile_position * 64) {
-          // Allow phasing through ground
-          ore.body.enable = false;
-          // stop hero from falling through
-          this.hero.body.gravity.y = 0;
-          // Stop hero sliding if holding down left or right at same time as down
-          this.hero.body.velocity.x = 0;
-          // move hero slower through ground whilst it fades
-          this.hero.body.velocity.y += 40;
-          // TODO move hero into center of block
-          var tween = game.add.tween(ore).to( { alpha: 0 }, 1000, Phaser.Easing.Linear.None, true);
-          tween.onComplete.add(function() {
-            ore.destroy();
-            digging = false;
-            // reset hero's gravity back to normal
-            game.hero.body.gravity.y = 10000;
-          });
-        }
-        else {
-          digging = false;
-          digging_vertical = false;
-        }
+       // if (ore.position.x == hero_tile_position * 64) {
+          dig_movement(direction);
+        // }
+        // else {
+        //   end_dig();
+        // }
       }
       else {
-        digging = false;
-        digging_vertical = false;
+        end_dig();
       }
     }
 
-    // TODO combine functions (DRY) and use direction to set variables instead
     if (direction == "left" || direction == "right") {
-      // Ensure hero is on ground (could have used body.touching)
-      //if (this.hero.position.y - 32 == ore.position.y) {
-      // BUG this returns true if you're holding left / right down in the air as it catches on the block?
-      // Maybe check if there's a block underneath and if not, don't allow?
-      if (this.hero.body.touching.down) {
+      // Ensure hero is on ground (body.touching returns true when not)
+      var block_underneath_hero = false;
+      for (var i=0; i < this.ground.children.length; i++) {
+        if (this.ground.children[i].position.x == hero_tile_position * 64
+          && this.ground.children[i].position.y == this.hero.position.y + 32) {
+          block_underneath_hero = true;
+        }
+      }
+      if(block_underneath_hero) {
         // Only dig through block left or right of hero
         if (ore.position.x != hero_tile_position * 64) {
-          // Allow phasing through ground
-          ore.body.enable = false;
-          // stop hero from falling through (not needed for x)
-          //this.hero.body.gravity.y = 0;
-          // move hero slower through ground whilst it fades
-          if (direction == 'left') {
-            this.hero.body.velocity.x -= 45;
-          }
-          else {
-            this.hero.body.velocity.x += 45;
-          }
-          var tween = game.add.tween(ore).to( { alpha: 0 }, 1000, Phaser.Easing.Linear.None, true);
-          tween.onComplete.add(function() {
-            ore.destroy();
-            game.hero.body.velocity.x = 0;
-            digging = false;
-            // reset hero's gravity back to normal
-            game.hero.body.gravity.y = 10000;
-          });
+          dig_movement(direction);
         }
         else {
-          digging = false;
-          digging_vertical = false;
+          end_dig();
         }
       }
       else {
-        digging = false;
-        digging_vertical = false;
+        end_dig();
       }
     }
-
+    function dig_movement(direction) {
+      // Allow phasing through ground
+      // TODO optimise (get hero y coordinate and only disable one row)
+      var array = game.ground.children;
+      for (var i = 0; i < array.length; i++) {
+        array[i].body.enable = false;
+      }
+      // stop hero from falling through
+      game.hero.body.gravity.y = 0;
+      // Stop hero sliding if holding down left or right at same time as down
+      // and move hero slower through ground whilst it fades
+      if (direction == 'down') {
+        game.hero.body.velocity.x = 0;
+        game.hero.body.velocity.y += 40;
+        // Move hero to the middle of the block
+        game.add.tween(game.hero).to({x: ore.body.position.x + 16}, 700, Phaser.Easing.Linear.None, true);
+      }
+      else if (direction == 'left') {
+        game.hero.body.velocity.x -= 45;
+      }
+      else {
+        game.hero.body.velocity.x += 45;
+      }
+      // move hero slower through ground whilst it fades
+      game.hero.body.velocity.y += 40;
+      // Fade ore out
+      var tween = game.add.tween(ore).to( { alpha: 0 }, 1000, Phaser.Easing.Linear.None, true);
+      tween.onComplete.add(function() {
+        ore.destroy();
+        for (var i = 0; i < array.length; i++) {
+          array[i].body.enable = true;
+        }
+        if (direction != 'down') {
+          game.hero.body.velocity.x = 0;
+        }
+        digging = false;
+        // reset hero's gravity back to normal
+        game.hero.body.gravity.y = 10000;
+      });
+    }
+    function end_dig() {
+      digging = false;
+      digging_vertical = false;
+    }
   }
 };
