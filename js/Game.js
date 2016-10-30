@@ -16,6 +16,7 @@ Motherload.Game.prototype = {
 
     this.game.plugins.add(Phaser.Plugin.DebugArcadePhysics, {
       renderCenter:   false,
+      renderLegend:   false,
       renderRotation: false,
       renderSpeed:    false,
     });
@@ -72,10 +73,13 @@ Motherload.Game.prototype = {
 
   },
   update: function() {
-
+    // Flag all touching blocks
+    this.game.physics.arcade.overlap(this.hero, this.ground);
+    // Separate player from touching blocks
     this.game.physics.arcade.collide(this.hero, this.ground, this.dig_prep);
+
     if (!digging) {
-    
+
       // Allow hero to phase through ground when digging
       this.hero.body.velocity.x = 0;
       this.hero.body.velocity.y = 0;
@@ -103,31 +107,35 @@ Motherload.Game.prototype = {
   render: function() {
 
     this.game.debug.bodyInfo(this.hero, 32, 32);
-    // this.game.debug.text(JSON.stringify(this.hero.body.touching), 32, 240, "white", '12px monospace');
-    this.game.debug.spriteCoords(this.hero, 32, 500);
+    this.game.debug.text("digging: " + digging + " \nhorz: " + digging_horizontal + " \n vert: " + digging_horizontal, 32, 240, 'white', this.game.debug.font);
     this.game.debug.text(this.game.time.fps, 400, 20, "#fff");
   },
   dig_prep: function(hero, ground_block) {
-    if (game.cursors.down.isDown && hero.body.touching.down && !digging) {
-      digging = true;
-      digging_vertical = true;
-      game.dig(ground_block, "down");
-    }
-    else if (game.cursors.left.isDown && hero.body.touching.left && !digging) {
-      digging = true;
-      digging_horizontal = true;
-      game.dig(ground_block, "left");
-    }
-    else if (game.cursors.right.isDown && hero.body.touching.right && !digging) {
-      digging = true;
-      digging_horizontal = true;
-      game.dig(ground_block, "right");
+    var heroTouching = hero.body.touching;
+    if (!digging && heroTouching.down) {
+      if (game.cursors.down.isDown) {
+        digging = true;
+        digging_vertical = true;
+        game.dig(ground_block, "down");
+      }
+      else if (hero.body.center.y > ground_block.body.center.y) {
+        if (game.cursors.left.isDown && heroTouching.left) {
+          digging = true;
+          digging_horizontal = true;
+          game.dig(ground_block, "left");
+        }
+        else if (game.cursors.right.isDown && heroTouching.right) {
+          digging = true;
+          digging_horizontal = true;
+          game.dig(ground_block, "right");
+        }
+      }
     }
   },
   dig: function(ground_block, direction) {
     // set to ground tile number (left is 0, next is 1 etc)
     var hero_tile_position = Math.round(this.hero.position.x / 64);
-      
+
     if (direction == "down") {
       // Stop digging side to side
       if (this.hero.position.y < ground_block.position.y) {
@@ -166,8 +174,8 @@ Motherload.Game.prototype = {
         var array = game.ground.children;
         // phase diagonally if not exactly on top of block
         for (var i = 0; i < array.length; i++) {
-          if (array[i].position.y == game.hero.position.y + 32 && 
-            (array[i].position.x == hero_tile_position * 64 || 
+          if (array[i].position.y == game.hero.position.y + 32 &&
+            (array[i].position.x == hero_tile_position * 64 ||
              array[i].position.x == hero_tile_position * 64 - 64 )) {
             array[i].body.enable = false;
           }
@@ -213,6 +221,7 @@ Motherload.Game.prototype = {
     }
     function end_dig() {
       digging = false;
+      digging_horizontal = false;
       digging_vertical = false;
     }
   }
