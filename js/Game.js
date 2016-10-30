@@ -34,16 +34,22 @@ Motherload.Game.prototype = {
     // Add ground group
     this.ground = this.add.group();
     this.ground.enableBody = true;
+    var ground_options = [
+      "dirt",
+      "ore"
+    ];
 
-    // TODO figure out how to generate sprites randomly
-    // Generate random number between (1 and 2) and set 1 to one block and 2 to another? See Math.Random
+    // Generate ground blocks
     var row = 0;
 
     for (var i = 0; i < 10; i++) {
         for (var j = 0; j < 10; j++) {
-            var number = Math.floor(Math.random() * 2);
-            //console.log(number);
-            this.ore = this.ground.create(64 * j, 480 + (64 * row), 'ore');
+            // Set ground_options to number of options plus 3, and then set the undefined to dirt to ensure an abundance of dirt
+            var ground_option = ground_options[Math.floor(Math.random() * (ground_options.length + 3))];
+            if (ground_option == null) {
+              ground_option = ground_options[0];
+            }
+            this.ground_block = this.ground.create(64 * j, 480 + (64 * row), ground_option);
             var last = this.ground.length - 1;
             var child = this.ground.children[last];
             child.width = 64;
@@ -60,8 +66,8 @@ Motherload.Game.prototype = {
 
   },
   update: function() {
-    this.game.physics.arcade.collide(this.hero, this.ground, this.dig_prep);
 
+    this.game.physics.arcade.collide(this.hero, this.ground, this.dig_prep);
     if (!digging) {
     
       // Allow hero to phase through ground when digging
@@ -94,32 +100,32 @@ Motherload.Game.prototype = {
     this.game.debug.spriteCoords(this.hero, 32, 500);
     this.game.debug.text(this.game.time.fps, 400, 20, "#fff");
   },
-  dig_prep: function(hero, ore) {
+  dig_prep: function(hero, ground_block) {
     if (game.cursors.down.isDown && hero.body.touching.down && !digging) {
       digging = true;
       digging_vertical = true;
-      game.dig(ore, "down");
+      game.dig(ground_block, "down");
     }
     else if (game.cursors.left.isDown && hero.body.touching.left && !digging) {
       digging = true;
       digging_horizontal = true;
-      game.dig(ore, "left");
+      game.dig(ground_block, "left");
     }
     else if (game.cursors.right.isDown && hero.body.touching.right && !digging) {
       digging = true;
       digging_horizontal = true;
-      game.dig(ore, "right");
+      game.dig(ground_block, "right");
     }
   },
-  dig: function(ore, direction) {
+  dig: function(ground_block, direction) {
     // set to ground tile number (left is 0, next is 1 etc)
     var hero_tile_position = Math.round(this.hero.position.x / 64);
       
     if (direction == "down") {
       // Stop digging side to side
-      if (this.hero.position.y < ore.position.y) {
+      if (this.hero.position.y < ground_block.position.y) {
         // Only dig through block directly underneath (stops diagonal bug)
-       // if (ore.position.x == hero_tile_position * 64) {
+        // if (ground_block.position.x == hero_tile_position * 64) {
           dig_movement(direction);
         // }
         // else {
@@ -141,13 +147,7 @@ Motherload.Game.prototype = {
         }
       }
       if(block_underneath_hero) {
-        // Only dig through block left or right of hero
-        if (ore.position.x != hero_tile_position * 64) {
-          dig_movement(direction);
-        }
-        else {
-          end_dig();
-        }
+        dig_movement(direction);
       }
       else {
         end_dig();
@@ -155,10 +155,19 @@ Motherload.Game.prototype = {
     }
     function dig_movement(direction) {
       // Allow phasing through ground
-      // TODO optimise (get hero y coordinate and only disable one row)
-      var array = game.ground.children;
-      for (var i = 0; i < array.length; i++) {
-        array[i].body.enable = false;
+      if (direction == 'down') {
+        var array = game.ground.children;
+        // phase diagonally if not exactly on top of block
+        for (var i = 0; i < array.length; i++) {
+          if (array[i].position.y == game.hero.position.y + 32 && 
+            (array[i].position.x == hero_tile_position * 64 || 
+             array[i].position.x == hero_tile_position * 64 - 64 )) {
+            array[i].body.enable = false;
+          }
+        }
+      }
+      else {
+        ground_block.body.enable = false;
       }
       // stop hero from falling through
       game.hero.body.gravity.y = 0;
@@ -166,24 +175,26 @@ Motherload.Game.prototype = {
       // and move hero slower through ground whilst it fades
       if (direction == 'down') {
         game.hero.body.velocity.x = 0;
-        game.hero.body.velocity.y += 40;
+        game.hero.body.velocity.y += 10;
         // Move hero to the middle of the block
-        game.add.tween(game.hero).to({x: ore.body.position.x + 16}, 700, Phaser.Easing.Linear.None, true);
+        game.add.tween(game.hero).to({x: ground_block.body.position.x + 16}, 700, Phaser.Easing.Linear.None, true);
       }
       else if (direction == 'left') {
-        game.hero.body.velocity.x -= 45;
+        game.hero.body.velocity.x -= 55;
       }
       else {
-        game.hero.body.velocity.x += 45;
+        game.hero.body.velocity.x += 55;
       }
       // move hero slower through ground whilst it fades
       game.hero.body.velocity.y += 40;
-      // Fade ore out
-      var tween = game.add.tween(ore).to( { alpha: 0 }, 1000, Phaser.Easing.Linear.None, true);
+      // Fade ground_block out
+      var tween = game.add.tween(ground_block).to( { alpha: 0 }, 1000, Phaser.Easing.Linear.None, true);
       tween.onComplete.add(function() {
-        ore.destroy();
-        for (var i = 0; i < array.length; i++) {
-          array[i].body.enable = true;
+        ground_block.destroy();
+        if (direction == 'down') {
+          for (var i = 0; i < array.length; i++) {
+            array[i].body.enable = true;
+          }
         }
         if (direction != 'down') {
           game.hero.body.velocity.x = 0;
