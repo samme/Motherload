@@ -1,7 +1,7 @@
 var Motherload = Motherload || {};
 
 //Motherload.game = new Phaser.Game(window.innerWidth * window.devicePixelRatio, window.innerHeight * window.devicePixelRatio, Phaser.AUTO, '');
-Motherload.game = new Phaser.Game(640, 640, Phaser.AUTO, '');
+Motherload.game = new Phaser.Game(800, 640, Phaser.CANVAS, '');
 
 Motherload.game.state.add('Boot', Motherload.Boot);
 Motherload.game.state.add('Preload', Motherload.Preload);

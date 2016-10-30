@@ -14,10 +14,16 @@ Motherload.Game.prototype = {
 
     this.game.physics.startSystem(Phaser.Physics.ARCADE);
 
+    this.game.plugins.add(Phaser.Plugin.DebugArcadePhysics, {
+      renderCenter:   false,
+      renderRotation: false,
+      renderSpeed:    false,
+    });
+
     // Add sky
     this.sky = this.add.sprite(0, 0, 'sky');
     this.sky.height = 480;
-    
+
     // Add hero sprite
     this.hero = this.add.sprite(100, 435, 'hero');
     // Create animation
@@ -96,7 +102,8 @@ Motherload.Game.prototype = {
   },
   render: function() {
 
-    this.game.debug.cameraInfo(this.camera, 32, 32);
+    this.game.debug.bodyInfo(this.hero, 32, 32);
+    // this.game.debug.text(JSON.stringify(this.hero.body.touching), 32, 240, "white", '12px monospace');
     this.game.debug.spriteCoords(this.hero, 32, 500);
     this.game.debug.text(this.game.time.fps, 400, 20, "#fff");
   },
